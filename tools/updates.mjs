@@ -126,8 +126,10 @@ let SEQ = 0;
 
 // ---------- 取历史 ----------
 const sinceTs = Math.floor(new Date(`${SINCE}T00:00:00+08:00`).getTime() / 1000);
-const base = git(['rev-list', '-1', '--first-parent', `--before=${sinceTs}`, 'HEAD']).toString().trim();
-if (!base) throw new Error(`找不到 ${SINCE} 之前的提交。CI 上 checkout 要加 fetch-depth: 0`);
+const prior = git(['rev-list', '-1', '--first-parent', `--before=${sinceTs}`, 'HEAD']).toString().trim();
+// 派生仓库可能晚于起算日创建；以首次导入 book/ 的提交为基线，避免把整本书标为「新增」。
+const base = prior || git(['log', '--first-parent', '--reverse', '--format=%H', '--', 'book/']).toString().trim().split('\n')[0];
+if (!base) throw new Error(`找不到 ${SINCE} 之前的提交，也找不到 book/ 的导入提交。CI 上 checkout 要加 fetch-depth: 0`);
 const log = git(['log', '--first-parent', '--reverse', '--diff-merges=first-parent', '--name-only',
   '--format=@%H %ct', `${base}..HEAD`, '--', 'book/']).toString();
 const commits = [];
